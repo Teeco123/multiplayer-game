@@ -35,7 +35,7 @@ void HandleClient(int clientSocket, sockaddr_in clientAddr) {
 
     {
       std::lock_guard lock(consoleMutex);
-      printf("%s:%d - %s\n", clientIP, clientPort, buffer);
+      printf("%s:%d - %s", clientIP, clientPort, buffer);
     }
   }
   close(clientSocket);

@@ -12,7 +12,7 @@
 
 std::mutex consoleMutex;
 
-void HandleClient(int clientSocket) {
+void HandleClient(int clientSocket, sockaddr_in clientAddr) {
   char buffer[1024];
 
   bool running = true;
@@ -27,9 +27,12 @@ void HandleClient(int clientSocket) {
       break;
     }
 
+    char clientIP[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &(clientAddr.sin_addr), clientIP, INET_ADDRSTRLEN);
+
     {
       std::lock_guard lock(consoleMutex);
-      printf("Received: %s", buffer);
+      printf("%s: %s\n", clientIP, buffer);
     }
   }
   close(clientSocket);
@@ -96,7 +99,7 @@ int main() {
       printf("Client connected - %s \n", clientIP);
     }
 
-    threads.push_back(std::thread(HandleClient, clientSocket));
+    threads.push_back(std::thread(HandleClient, clientSocket, clientAddr));
     threads.back().detach();
   }
 

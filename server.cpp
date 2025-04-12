@@ -21,18 +21,17 @@ void HandleClient(int clientSocket, sockaddr_in clientAddr) {
   while (running) {
     memset(buffer, 0, 1024);
 
-    int bytesReceived = recv(clientSocket, buffer, 1024, 0);
-
-    if (bytesReceived <= 0) {
-      std::lock_guard lock(consoleMutex);
-      printf("Client disconnected\n");
-      running = false;
-      break;
-    }
-
     char clientIP[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &(clientAddr.sin_addr), clientIP, INET_ADDRSTRLEN);
     int clientPort = ntohs(clientAddr.sin_port);
+
+    int bytesReceived = recv(clientSocket, buffer, 1024, 0);
+    if (bytesReceived <= 0) {
+      std::lock_guard lock(consoleMutex);
+      printf("Client disconnected - %s:%d\n", clientIP, clientPort);
+      running = false;
+      break;
+    }
 
     {
       std::lock_guard lock(consoleMutex);

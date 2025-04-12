@@ -1,8 +1,8 @@
-#include <atomic>
 #include <cstring>
 #include <iostream>
 #include <map>
 #include <mutex>
+#include <set>
 #include <thread>
 #include <vector>
 
@@ -25,7 +25,12 @@ std::mutex consoleMutex;
 std::mutex clientsMutex;
 
 std::map<int, ClientInfo> clients;
-std::atomic<int> totalConnections(0);
+std::set<std::string> connectedIPs;
+
+bool isIPConnected(const std::string &ip) {
+  std::lock_guard lock(clientsMutex);
+  return connectedIPs.find(ip) != connectedIPs.end();
+}
 
 void listConnectedClients() {
   std::lock_guard lock(clientsMutex);
@@ -165,6 +170,18 @@ int main() {
     char clientIP[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &(clientAddr.sin_addr), clientIP, INET_ADDRSTRLEN);
     int clientPort = ntohs(clientAddr.sin_port);
+    std::string ipString(clientIP);
+
+    if (isIPConnected(ipString)) {
+      std::lock_guard lock(consoleMutex);
+      printf("Connection rejected - %s:%d (IP already connected)\n", clientIP,
+             clientPort);
+      const char *message = "Connection rejected: You are already connected "
+                            "from this IP address.\n";
+      send(clientSocket, message, strlen(message), 0);
+      close(clientSocket);
+      continue;
+    }
 
     {
       std::lock_guard lock(consoleMutex);
@@ -178,6 +195,7 @@ int main() {
       client.ip = clientIP;
       client.port = clientPort;
       clients[clientSocket] = client;
+      connectedIPs.insert(ipString);
     }
 
     // Create new thread for a client and detach it

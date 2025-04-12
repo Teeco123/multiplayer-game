@@ -1,18 +1,49 @@
-#include <arpa/inet.h>
-#include <cerrno>
-#include <cstdio>
-#include <cstdlib>
+#include <atomic>
 #include <cstring>
+#include <iostream>
+#include <map>
 #include <mutex>
+#include <thread>
+#include <vector>
+
+// macOS/Unix socket headers
+#include <arpa/inet.h>
+#include <fcntl.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
-#include <thread>
 #include <unistd.h>
-#include <vector>
 
 #define PORT 8080
 
+// Client tracking structure
+struct ClientInfo {
+  std::string ip;
+  int port;
+};
+
 std::mutex consoleMutex;
+std::mutex clientsMutex;
+
+std::map<int, ClientInfo> clients;
+std::atomic<int> totalConnections(0);
+
+void listConnectedClients() {
+  std::lock_guard lock(clientsMutex);
+
+  printf("\n==== CONNECTED CLIENTS ====\n");
+  printf("Total: %lu clients\n", clients.size());
+  printf("\n");
+
+  if (clients.empty()) {
+    printf("No clients connected.\n");
+  } else {
+    for (const auto &pair : clients) {
+      printf("Client %d: %s:%d\n", pair.first, pair.second.ip.c_str(),
+             pair.second.port);
+    }
+  }
+  printf("==========================\n");
+}
 
 void HandleClient(int clientSocket, sockaddr_in clientAddr) {
   char buffer[1024];
@@ -43,17 +74,21 @@ void HandleClient(int clientSocket, sockaddr_in clientAddr) {
     }
   }
 
-  // Cleanup client socket
+  // Cleanup
+  {
+    std::lock_guard lock(clientsMutex);
+    clients.erase(clientSocket);
+  }
+
   close(clientSocket);
 }
 
 int main() {
-  std::vector<std::thread> threads;
-
   // Address structs and length
   int serverSocket, clientSocket;
   struct sockaddr_in serverAddr, clientAddr;
   int addrLen = sizeof(struct sockaddr_in);
+  std::vector<std::thread> threads;
 
   // Create server socket
   serverSocket = socket(AF_INET, SOCK_STREAM, 0);
@@ -101,6 +136,19 @@ int main() {
   printf("Server started at port - %d\n", PORT);
   printf("-------------------------------------\n");
 
+  // Start a thread to handle server console commands
+  std::thread consoleThread([&]() {
+    std::string command;
+    while (true) {
+      std::getline(std::cin, command);
+
+      if (command == "clients") {
+        listConnectedClients();
+      }
+    }
+  });
+  consoleThread.detach();
+
   while (true) {
     // Create client socket
     clientSocket = accept(serverSocket, (struct sockaddr *)&clientAddr,
@@ -123,10 +171,20 @@ int main() {
       printf("Client connected - %s:%d \n", clientIP, clientPort);
     }
 
+    // Store client info
+    {
+      std::lock_guard lock(clientsMutex);
+      ClientInfo client;
+      client.ip = clientIP;
+      client.port = clientPort;
+      clients[clientSocket] = client;
+    }
+
     // Create new thread for a client and detach it
     threads.push_back(std::thread(HandleClient, clientSocket, clientAddr));
     threads.back().detach();
   }
 
+  close(serverSocket);
   exit(EXIT_SUCCESS);
 }

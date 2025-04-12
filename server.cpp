@@ -3,6 +3,7 @@
 #include <map>
 #include <mutex>
 #include <set>
+#include <sstream>
 #include <thread>
 #include <vector>
 
@@ -143,12 +144,31 @@ int main() {
 
   // Start a thread to handle server console commands
   std::thread consoleThread([&]() {
-    std::string command;
+    std::string commandLine;
     while (true) {
-      std::getline(std::cin, command);
+      std::getline(std::cin, commandLine);
+
+      std::istringstream iss(commandLine);
+      std::string command;
+      iss >> command;
 
       if (command == "clients") {
         listConnectedClients();
+      } else if (command == "kick") {
+        int socket;
+        if (iss >> socket) {
+          std::lock_guard lock(clientsMutex);
+          auto client = clients.find(socket);
+          if (client != clients.end()) {
+            printf("Kicking client %d (%s:%d)\n", socket,
+                   client->second.ip.c_str(), client->second.port);
+            close(socket);
+          } else {
+            printf("No client with socket %d found \n", socket);
+          }
+        } else {
+          printf("Usage: kick <socketId>\n");
+        }
       }
     }
   });

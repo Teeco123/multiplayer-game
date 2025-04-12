@@ -8,7 +8,7 @@
 void SocketHandler::Create() {
   serverSocket = socket(AF_INET, SOCK_STREAM, 0);
   if (serverSocket == -1) {
-    printf("Socket failed to start\n");
+    printf("Socket failed to start: %s\n", strerror(errno));
     exit(EXIT_FAILURE);
   } else {
     printf("Socket started\n");
@@ -32,7 +32,7 @@ void SocketHandler::Bind(int port) {
 
   if (bind(serverSocket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) ==
       -1) {
-    printf("Bind failed\n");
+    printf("Bind failed: %s\n", strerror(errno));
     close(serverSocket);
     exit(EXIT_FAILURE);
   } else {
@@ -42,7 +42,7 @@ void SocketHandler::Bind(int port) {
 
 void SocketHandler::Listen() {
   if (listen(serverSocket, 3) == -1) {
-    printf("Listen failed\n");
+    printf("Listen failed: %s\n", strerror(errno));
     close(serverSocket);
     exit(EXIT_FAILURE);
   } else {
@@ -55,7 +55,7 @@ void SocketHandler::Accept() {
                         (socklen_t *)&addrLen);
 
   if (clientSocket == -1) {
-    printf("Accept failed %s\n", strerror(errno));
+    printf("Accept failed: %s\n", strerror(errno));
   } else {
     printf("New client is connecting\n");
   }

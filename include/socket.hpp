@@ -1,7 +1,6 @@
 #ifndef SOCKET_HPP
 #define SOCKET_HPP
 
-#include <arpa/inet.h>
 #include <netinet/in.h>
 
 class SocketHandler {

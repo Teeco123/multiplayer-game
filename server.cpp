@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <netinet/in.h>
 #include <sys/socket.h>
 
@@ -50,6 +51,17 @@ int main() {
 
   bool running = true;
   while (running) {
+    memset(buffer, 0, 1024);
+
+    int bytesReceived = recv(clientSocket, buffer, 1024, 0);
+
+    if (bytesReceived <= 0) {
+      printf("Client disconnected\n");
+      break;
+    }
+
+    printf("Received: %s", buffer);
   }
+
   exit(EXIT_SUCCESS);
 }

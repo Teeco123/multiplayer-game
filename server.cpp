@@ -36,7 +36,6 @@ bool isIPConnected(const std::string &ip) {
 void listConnectedClients() {
   std::lock_guard lock(clientsMutex);
 
-  printf("\n==== CONNECTED CLIENTS ====\n");
   printf("Total: %lu clients\n", clients.size());
   printf("\n");
 
@@ -48,7 +47,24 @@ void listConnectedClients() {
              pair.second.port);
     }
   }
-  printf("==========================\n");
+}
+
+void kickClient(int socket) {
+  std::lock_guard lock(clientsMutex);
+  auto client = clients.find(socket);
+  if (client != clients.end()) {
+    printf("Kicking client %d (%s:%d).\n", socket, client->second.ip.c_str(),
+           client->second.port);
+    close(socket);
+  } else {
+    printf("No client with socket ID %d found.\n", socket);
+  }
+}
+
+void helpCommand() {
+  printf("clients\n");
+  printf("kick <socket_id>\n");
+  printf("help\n");
 }
 
 void HandleClient(int clientSocket, sockaddr_in clientAddr) {
@@ -155,27 +171,20 @@ int main() {
       std::string command;
       iss >> command;
 
-      if (command == "clients") {
-        listConnectedClients();
+      // help
+      if (command == "help") {
+        helpCommand();
+        // kick <socket_id>
       } else if (command == "kick") {
         int socket;
         if (iss >> socket) {
-          std::lock_guard lock(clientsMutex);
-          auto client = clients.find(socket);
-          if (client != clients.end()) {
-            printf("Kicking client %d (%s:%d).\n", socket,
-                   client->second.ip.c_str(), client->second.port);
-            close(socket);
-          } else {
-            printf("No client with socket ID %d found.\n", socket);
-          }
+          kickClient(socket);
         } else {
           printf("Usage: kick <socket_id>\n");
         }
-      } else if (command == "help") {
-        printf("clients\n");
-        printf("kick <socket_id>\n");
-        printf("help\n");
+        // clients
+      } else if (command == "clients") {
+        listConnectedClients();
       } else {
         printf("Unknown command. Type 'help' for help.\n");
       }

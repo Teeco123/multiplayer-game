@@ -170,8 +170,12 @@ int main() {
             printf("No client with socket ID %d found.\n", socket);
           }
         } else {
-          printf("Usage: kick <socketId>\n");
+          printf("Usage: kick <socket_id>\n");
         }
+      } else if (command == "help") {
+        printf("clients\n");
+        printf("kick <socket_id>\n");
+        printf("help\n");
       } else {
         printf("Unknown command. Type 'help' for help.\n");
       }

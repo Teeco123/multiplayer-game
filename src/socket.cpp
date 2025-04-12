@@ -60,3 +60,5 @@ void SocketHandler::Accept() {
     printf("New client is connecting\n");
   }
 }
+
+void SocketHandler::Close() { close(serverSocket); }

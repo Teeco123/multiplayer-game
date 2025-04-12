@@ -109,10 +109,7 @@ void HandleClient(int clientSocket, sockaddr_in clientAddr) {
 
 int main() {
   SocketHandler socket;
-  // Address structs and length
-  int serverSocket, clientSocket;
-  struct sockaddr_in serverAddr, clientAddr;
-  int addrLen = sizeof(struct sockaddr_in);
+
   std::vector<std::thread> threads;
 
   socket.Create();
@@ -161,6 +158,10 @@ int main() {
   while (true) {
 
     socket.Accept();
+
+    auto clientAddr = socket.getClientAddr();
+    auto clientSocket = socket.getClientSocket();
+
     // Get ip and port of client
     char clientIP[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &(clientAddr.sin_addr), clientIP, INET_ADDRSTRLEN);
@@ -198,6 +199,6 @@ int main() {
     threads.back().detach();
   }
 
-  close(serverSocket);
+  socket.Close();
   exit(EXIT_SUCCESS);
 }

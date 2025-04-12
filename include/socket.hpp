@@ -2,6 +2,7 @@
 #define SOCKET_HPP
 
 #include <arpa/inet.h>
+#include <netinet/in.h>
 
 class SocketHandler {
 public:
@@ -10,6 +11,13 @@ public:
   void Bind(int port);
   void Listen();
   void Accept();
+
+  void Close();
+
+  int getServerSocket() const { return serverSocket; }
+  int getClientSocket() const { return clientSocket; }
+  sockaddr_in getServerAddr() const { return serverAddr; }
+  sockaddr_in getClientAddr() const { return clientAddr; }
 
 private:
   int serverSocket, clientSocket;

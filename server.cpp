@@ -10,6 +10,8 @@
 #include <unistd.h>
 #include <vector>
 
+#define PORT 8080
+
 std::mutex consoleMutex;
 
 void HandleClient(int clientSocket, sockaddr_in clientAddr) {
@@ -24,15 +26,17 @@ void HandleClient(int clientSocket, sockaddr_in clientAddr) {
     if (bytesReceived <= 0) {
       std::lock_guard lock(consoleMutex);
       printf("Client disconnected\n");
+      running = false;
       break;
     }
 
     char clientIP[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &(clientAddr.sin_addr), clientIP, INET_ADDRSTRLEN);
+    int clientPort = ntohs(clientAddr.sin_port);
 
     {
       std::lock_guard lock(consoleMutex);
-      printf("%s: %s\n", clientIP, buffer);
+      printf("%s:%d - %s\n", clientIP, clientPort, buffer);
     }
   }
   close(clientSocket);
@@ -63,7 +67,7 @@ int main() {
 
   serverAddr.sin_family = AF_INET;
   serverAddr.sin_addr.s_addr = INADDR_ANY;
-  serverAddr.sin_port = htons(8080);
+  serverAddr.sin_port = htons(PORT);
 
   if (bind(serverSocket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) ==
       -1) {
@@ -82,6 +86,10 @@ int main() {
     printf("Listen success\n");
   }
 
+  printf("-------------------------------------\n");
+  printf("Server started at port - %d\n", PORT);
+  printf("-------------------------------------\n");
+
   while (true) {
     clientSocket = accept(serverSocket, (struct sockaddr *)&clientAddr,
                           (socklen_t *)&addrLen);
@@ -93,10 +101,11 @@ int main() {
 
     char clientIP[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &(clientAddr.sin_addr), clientIP, INET_ADDRSTRLEN);
+    int clientPort = ntohs(clientAddr.sin_port);
 
     {
       std::lock_guard lock(consoleMutex);
-      printf("Client connected - %s \n", clientIP);
+      printf("Client connected - %s:%d \n", clientIP, clientPort);
     }
 
     threads.push_back(std::thread(HandleClient, clientSocket, clientAddr));

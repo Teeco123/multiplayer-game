@@ -147,6 +147,9 @@ int main() {
     std::string commandLine;
     while (true) {
       std::getline(std::cin, commandLine);
+      if (commandLine.find_first_not_of(" \t\n\r\f\v") == std::string::npos) {
+        continue;
+      }
 
       std::istringstream iss(commandLine);
       std::string command;
@@ -160,15 +163,17 @@ int main() {
           std::lock_guard lock(clientsMutex);
           auto client = clients.find(socket);
           if (client != clients.end()) {
-            printf("Kicking client %d (%s:%d)\n", socket,
+            printf("Kicking client %d (%s:%d).\n", socket,
                    client->second.ip.c_str(), client->second.port);
             close(socket);
           } else {
-            printf("No client with socket %d found \n", socket);
+            printf("No client with socket ID %d found.\n", socket);
           }
         } else {
           printf("Usage: kick <socketId>\n");
         }
+      } else {
+        printf("Unknown command. Type 'help' for help.\n");
       }
     }
   });

@@ -14,6 +14,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include "include/socket.hpp"
+
 #define PORT 8080
 
 // Client tracking structure
@@ -106,53 +108,17 @@ void HandleClient(int clientSocket, sockaddr_in clientAddr) {
 }
 
 int main() {
+  SocketHandler socket;
   // Address structs and length
   int serverSocket, clientSocket;
   struct sockaddr_in serverAddr, clientAddr;
   int addrLen = sizeof(struct sockaddr_in);
   std::vector<std::thread> threads;
 
-  // Create server socket
-  serverSocket = socket(AF_INET, SOCK_STREAM, 0);
-  if (serverSocket == -1) {
-    printf("Socket failed to start\n");
-    exit(EXIT_FAILURE);
-  } else {
-    printf("Socket started\n");
-  };
-
-  // Set reuse addres for socket
-  int opt = 1;
-  if (setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) <
-      0) {
-    printf("Setsockopt failed: %s", strerror(errno));
-    close(serverSocket);
-    exit(EXIT_FAILURE);
-  }
-
-  // Set addres family and port
-  serverAddr.sin_family = AF_INET;
-  serverAddr.sin_addr.s_addr = INADDR_ANY;
-  serverAddr.sin_port = htons(PORT);
-
-  // Bind server socket
-  if (bind(serverSocket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) ==
-      -1) {
-    printf("Bind failed\n");
-    close(serverSocket);
-    exit(EXIT_FAILURE);
-  } else {
-    printf("Binded successfully\n");
-  }
-
-  // Start listening
-  if (listen(serverSocket, 3) == -1) {
-    printf("Listen failed\n");
-    close(serverSocket);
-    exit(EXIT_FAILURE);
-  } else {
-    printf("Listening successfully\n");
-  }
+  socket.Create();
+  socket.SetOpt();
+  socket.Bind(8080);
+  socket.Listen();
 
   printf("-------------------------------------\n");
   printf("Server started at port - %d\n", PORT);
@@ -193,17 +159,8 @@ int main() {
   consoleThread.detach();
 
   while (true) {
-    // Create client socket
-    clientSocket = accept(serverSocket, (struct sockaddr *)&clientAddr,
-                          (socklen_t *)&addrLen);
 
-    // Accept new connection from client
-    if (clientSocket == -1) {
-      printf("Accept failed %s\n", strerror(errno));
-    } else {
-      printf("New client is connecting\n");
-    }
-
+    socket.Accept();
     // Get ip and port of client
     char clientIP[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &(clientAddr.sin_addr), clientIP, INET_ADDRSTRLEN);

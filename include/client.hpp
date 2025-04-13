@@ -19,8 +19,8 @@ public:
   void KickClient(std::string clientIP);
   void CreateClient(ClientInfo client, std::string clientIP);
   bool IsIpConnected(std::string clientIP);
-  void HandleClient(int clientSocket, sockaddr_in clientAddr);
-  void HandleMessage(const char *clientIP, int clientPort, const char *message);
+  void HandleClient(std::string clientIP, sockaddr_in clientAddr);
+  void HandleMessage(std::string clientIP, char *message);
   void HandleDisconnect(std::string clientIP);
 
   std::unordered_map<std::string, ClientInfo> getClientsMap() const {

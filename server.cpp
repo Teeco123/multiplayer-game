@@ -12,9 +12,6 @@
 
 #define PORT 8080
 
-std::mutex consoleMutex;
-std::mutex clientsMutex;
-
 int main() {
   SocketHandler socket;
   ConsoleHandler console;
@@ -71,7 +68,7 @@ int main() {
 
     // Create new thread for a client and detach it
     threads.push_back(std::thread(&ClientHandler::HandleClient,
-                                  &ClientHandler::getInstance(), clientSocket,
+                                  &ClientHandler::getInstance(), clientIP,
                                   clientAddr));
     threads.back().detach();
   }

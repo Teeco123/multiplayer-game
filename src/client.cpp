@@ -51,52 +51,57 @@ bool ClientHandler::IsIpConnected(std::string ip) {
   return clients.find(ip) != clients.end();
 }
 
-void ClientHandler::HandleMessage(const char *clientIP, int clientPort,
-                                  const char *message) {
+void ClientHandler::HandleMessage(std::string ip, char *message) {
   std::lock_guard lock(MutexHandler::getInstance().consoleMutex);
-  printf("%s:%d - %s", clientIP, clientPort, message);
+  auto client = clients.find(ip);
+  if (client != clients.end()) {
+    printf("%s:%d - %s", client->second.ip.c_str(), client->second.port,
+           message);
+  } else {
+    printf("Error occured while sending message.\n");
+  }
 }
 
 void ClientHandler::HandleDisconnect(std::string ip) {
 
   auto client = clients.find(ip);
-  // Print disconnect message
-  {
-    std::lock_guard lock(MutexHandler::getInstance().consoleMutex);
-    printf("Client disconnected - %s\n", ip.c_str());
-  }
+  if (client != clients.end()) {
+    // Remove client from clients map
+    {
+      std::lock_guard lock(MutexHandler::getInstance().clientMutex);
+      clients.erase(ip);
+    }
+    // Print disconnect message
+    {
+      std::lock_guard lock(MutexHandler::getInstance().consoleMutex);
+      printf("Client disconnected - %s\n", ip.c_str());
+    }
 
-  // Remove client from clients map
-  {
-    std::lock_guard lock(MutexHandler::getInstance().clientMutex);
-    clients.erase(ip);
+    close(client->second.socket);
+  } else {
+    {
+      std::lock_guard lock(MutexHandler::getInstance().consoleMutex);
+      printf("Error occured while disconnecting user with IP %s", ip.c_str());
+    }
   }
-
-  close(client->second.socket);
 }
 
-void ClientHandler::HandleClient(int clientSocket, sockaddr_in clientAddr) {
+void ClientHandler::HandleClient(std::string ip, sockaddr_in clientAddr) {
   char buffer[1024];
-  bool running = true;
 
-  // Client IP and PORT stringified
-  char clientIP[INET_ADDRSTRLEN];
-  inet_ntop(AF_INET, &(clientAddr.sin_addr), clientIP, INET_ADDRSTRLEN);
-  int clientPort = ntohs(clientAddr.sin_port);
-
-  while (running) {
+  auto client = clients.find(ip);
+  while (client != clients.end()) {
     // Clear message buffer
     memset(buffer, 0, 1024);
 
     // Check if server is receiving bytes from client
-    int bytesReceived = recv(clientSocket, buffer, 1024, 0);
+    int bytesReceived = recv(client->second.socket, buffer, 1024, 0);
     if (bytesReceived <= 0) {
-      running = false;
-      HandleDisconnect(clientIP);
+      HandleDisconnect(ip);
       break;
     }
 
     // Process received message
-    HandleMessage(clientIP, clientPort, buffer);
+    HandleMessage(ip, buffer);
   }
 }

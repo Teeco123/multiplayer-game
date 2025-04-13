@@ -1,17 +1,13 @@
-#include <cstring>
-#include <mutex>
 #include <thread>
 #include <vector>
 
 // macOS/Unix socket headers
 #include <arpa/inet.h>
-#include <fcntl.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
 #include <unistd.h>
 
 #include "include/client.hpp"
 #include "include/console.hpp"
+#include "include/mutex.hpp"
 #include "include/socket.hpp"
 
 #define PORT 8080
@@ -50,7 +46,7 @@ int main() {
     std::string ipStr(clientIP);
 
     if (ClientHandler::getInstance().IsIpConnected(ipStr)) {
-      std::lock_guard lock(consoleMutex);
+      std::lock_guard lock(MutexHandler::getInstance().consoleMutex);
       printf("Connection rejected - %s:%d (IP already connected)\n", clientIP,
              clientPort);
       const char *message = "Connection rejected: You are already connected "
@@ -61,7 +57,7 @@ int main() {
     }
 
     {
-      std::lock_guard lock(consoleMutex);
+      std::lock_guard lock(MutexHandler::getInstance().consoleMutex);
       printf("Client connected - %s:%d \n", clientIP, clientPort);
     }
 

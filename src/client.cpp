@@ -1,4 +1,5 @@
 #include "../include/client.hpp"
+#include "../include/mutex.hpp"
 #include <arpa/inet.h>
 #include <mutex>
 #include <netinet/in.h>
@@ -10,7 +11,7 @@ ClientHandler &ClientHandler::getInstance() {
 }
 
 void ClientHandler::ListClients() {
-  std::lock_guard lock(consoleMutex);
+  std::lock_guard lock(MutexHandler::getInstance().consoleMutex);
 
   printf("Total: %lu clients\n", clients.size());
   printf("\n");
@@ -26,7 +27,7 @@ void ClientHandler::ListClients() {
 }
 
 void ClientHandler::KickClient(int socket) {
-  std::lock_guard lock(clientMutex);
+  std::lock_guard lock(MutexHandler::getInstance().consoleMutex);
 
   auto client = clients.find(socket);
   if (client != clients.end()) {
@@ -39,7 +40,7 @@ void ClientHandler::KickClient(int socket) {
 }
 
 void ClientHandler::CreateClient(ClientInfo client, int clientSocket) {
-  std::lock_guard lock(clientMutex);
+  std::lock_guard lock(MutexHandler::getInstance().clientMutex);
 
   clients[clientSocket] = client;
 
@@ -48,13 +49,13 @@ void ClientHandler::CreateClient(ClientInfo client, int clientSocket) {
 }
 
 bool ClientHandler::IsIpConnected(std::string &ip) {
-  std::lock_guard lock(clientMutex);
+  std::lock_guard lock(MutexHandler::getInstance().clientMutex);
   return connectedIPs.find(ip) != connectedIPs.end();
 }
 
 void ClientHandler::HandleMessage(const char *clientIP, int clientPort,
                                   const char *message) {
-  std::lock_guard lock(consoleMutex);
+  std::lock_guard lock(MutexHandler::getInstance().consoleMutex);
   printf("%s:%d - %s", clientIP, clientPort, message);
 }
 
@@ -62,13 +63,13 @@ void ClientHandler::HandleDisconnect(int clientSocket, const char *clientIP,
                                      int clientPort) {
   // Print disconnect message
   {
-    std::lock_guard lock(consoleMutex);
+    std::lock_guard lock(MutexHandler::getInstance().consoleMutex);
     printf("Client disconnected - %s:%d\n", clientIP, clientPort);
   }
 
   // Remove client from clients map
   {
-    std::lock_guard lock(clientMutex);
+    std::lock_guard lock(MutexHandler::getInstance().clientMutex);
     clients.erase(clientSocket);
 
     std::string ipString(clientIP);

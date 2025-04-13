@@ -1,7 +1,7 @@
 #ifndef CONSOLE_HPP
 #define CONSOLE_HPP
 
-#include <mutex>
+#include <string>
 
 class ConsoleHandler {
 public:
@@ -11,7 +11,6 @@ public:
   void HelpCommand();
 
 private:
-  std::mutex consoleMutex;
   std::string commandLine;
 };
 

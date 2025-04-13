@@ -2,9 +2,9 @@
 #define CLIENT_HPP
 
 #include <map>
-#include <mutex>
 #include <netinet/in.h>
 #include <set>
+#include <string>
 
 struct ClientInfo {
   std::string ip;
@@ -27,8 +27,6 @@ public:
 
 private:
   ClientHandler() {}
-  std::mutex clientMutex;
-  std::mutex consoleMutex;
   std::map<int, ClientInfo> clients;
   std::set<std::string> connectedIPs;
 };

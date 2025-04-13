@@ -14,41 +14,21 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include "include/console.hpp"
 #include "include/socket.hpp"
 
 #define PORT 8080
 
 // Client tracking structure
-struct ClientInfo {
-  std::string ip;
-  int port;
-};
 
 std::mutex consoleMutex;
 std::mutex clientsMutex;
 
-std::map<int, ClientInfo> clients;
 std::set<std::string> connectedIPs;
 
 bool isIPConnected(const std::string &ip) {
   std::lock_guard lock(clientsMutex);
   return connectedIPs.find(ip) != connectedIPs.end();
-}
-
-void listConnectedClients() {
-  std::lock_guard lock(clientsMutex);
-
-  printf("Total: %lu clients\n", clients.size());
-  printf("\n");
-
-  if (clients.empty()) {
-    printf("No clients connected.\n");
-  } else {
-    for (const auto &pair : clients) {
-      printf("Client %d: %s:%d\n", pair.first, pair.second.ip.c_str(),
-             pair.second.port);
-    }
-  }
 }
 
 void kickClient(int socket) {
@@ -61,12 +41,6 @@ void kickClient(int socket) {
   } else {
     printf("No client with socket ID %d found.\n", socket);
   }
-}
-
-void helpCommand() {
-  printf("clients\n");
-  printf("kick <socket_id>\n");
-  printf("help\n");
 }
 
 void HandleClient(int clientSocket, sockaddr_in clientAddr) {
@@ -109,6 +83,7 @@ void HandleClient(int clientSocket, sockaddr_in clientAddr) {
 
 int main() {
   SocketHandler socket;
+  ConsoleHandler console;
 
   std::vector<std::thread> threads;
 
@@ -121,39 +96,7 @@ int main() {
   printf("Server started at port - %d\n", PORT);
   printf("-------------------------------------\n");
 
-  // Start a thread to handle server console commands
-  std::thread consoleThread([&]() {
-    std::string commandLine;
-    while (true) {
-      std::getline(std::cin, commandLine);
-      if (commandLine.find_first_not_of(" \t\n\r\f\v") == std::string::npos) {
-        continue;
-      }
-
-      std::istringstream iss(commandLine);
-      std::string command;
-      iss >> command;
-
-      // help
-      if (command == "help") {
-        helpCommand();
-        // kick <socket_id>
-      } else if (command == "kick") {
-        int socket;
-        if (iss >> socket) {
-          kickClient(socket);
-        } else {
-          printf("Usage: kick <socket_id>\n");
-        }
-        // clients
-      } else if (command == "clients") {
-        listConnectedClients();
-      } else {
-        printf("Unknown command. Type 'help' for help.\n");
-      }
-    }
-  });
-  consoleThread.detach();
+  console.CreateThread();
 
   while (true) {
 

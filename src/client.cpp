@@ -3,6 +3,7 @@
 #include <arpa/inet.h>
 #include <mutex>
 #include <netinet/in.h>
+#include <string>
 #include <unistd.h>
 
 ClientHandler &ClientHandler::getInstance() {
@@ -19,38 +20,35 @@ void ClientHandler::ListClients() {
   if (clients.empty()) {
     printf("No clients connected.\n");
   } else {
-    for (const auto &pair : clients) {
-      printf("Client %d: %s:%d\n", pair.first, pair.second.ip.c_str(),
-             pair.second.port);
+    for (const auto &client : clients) {
+      printf("Client %d: %s:%d\n", client.second.socket,
+             client.second.ip.c_str(), client.second.port);
     }
   }
 }
 
-void ClientHandler::KickClient(int socket) {
+void ClientHandler::KickClient(std::string ip) {
   std::lock_guard lock(MutexHandler::getInstance().consoleMutex);
 
-  auto client = clients.find(socket);
+  auto client = clients.find(ip);
   if (client != clients.end()) {
-    printf("Kicking client %d (%s:%d).\n", socket, client->second.ip.c_str(),
-           client->second.port);
-    close(socket);
+    printf("Kicking client %d (%s:%d).\n", client->second.socket,
+           client->second.ip.c_str(), client->second.port);
+    close(client->second.socket);
   } else {
-    printf("No client with socket ID %d found.\n", socket);
+    printf("No client with IP %s found.\n", ip.c_str());
   }
 }
 
-void ClientHandler::CreateClient(ClientInfo client, int clientSocket) {
+void ClientHandler::CreateClient(ClientInfo client, std::string clientIP) {
   std::lock_guard lock(MutexHandler::getInstance().clientMutex);
 
-  clients[clientSocket] = client;
-
-  std::string ipString(client.ip);
-  connectedIPs.insert(ipString);
+  clients[clientIP] = client;
 }
 
-bool ClientHandler::IsIpConnected(std::string &ip) {
+bool ClientHandler::IsIpConnected(std::string ip) {
   std::lock_guard lock(MutexHandler::getInstance().clientMutex);
-  return connectedIPs.find(ip) != connectedIPs.end();
+  return clients.find(ip) != clients.end();
 }
 
 void ClientHandler::HandleMessage(const char *clientIP, int clientPort,
@@ -59,24 +57,22 @@ void ClientHandler::HandleMessage(const char *clientIP, int clientPort,
   printf("%s:%d - %s", clientIP, clientPort, message);
 }
 
-void ClientHandler::HandleDisconnect(int clientSocket, const char *clientIP,
-                                     int clientPort) {
+void ClientHandler::HandleDisconnect(std::string ip) {
+
+  auto client = clients.find(ip);
   // Print disconnect message
   {
     std::lock_guard lock(MutexHandler::getInstance().consoleMutex);
-    printf("Client disconnected - %s:%d\n", clientIP, clientPort);
+    printf("Client disconnected - %s\n", ip.c_str());
   }
 
   // Remove client from clients map
   {
     std::lock_guard lock(MutexHandler::getInstance().clientMutex);
-    clients.erase(clientSocket);
-
-    std::string ipString(clientIP);
-    connectedIPs.erase(ipString);
+    clients.erase(ip);
   }
 
-  close(clientSocket);
+  close(client->second.socket);
 }
 
 void ClientHandler::HandleClient(int clientSocket, sockaddr_in clientAddr) {
@@ -96,7 +92,7 @@ void ClientHandler::HandleClient(int clientSocket, sockaddr_in clientAddr) {
     int bytesReceived = recv(clientSocket, buffer, 1024, 0);
     if (bytesReceived <= 0) {
       running = false;
-      HandleDisconnect(clientSocket, clientIP, clientPort);
+      HandleDisconnect(clientIP);
       break;
     }
 

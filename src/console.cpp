@@ -30,9 +30,9 @@ void ConsoleHandler::ExecuteCommand(std::string &commandLine) {
   if (command == "help") {
     HelpCommand();
   } else if (command == "kick") {
-    int socket;
-    if (iss >> socket) {
-      ClientHandler::getInstance().KickClient(socket);
+    std::string ip;
+    if (iss >> ip) {
+      ClientHandler::getInstance().KickClient(ip);
     } else {
       printf("Usage: kick <socket_id>\n");
     }

@@ -1,12 +1,12 @@
 #ifndef CLIENT_HPP
 #define CLIENT_HPP
 
-#include <map>
 #include <netinet/in.h>
-#include <set>
 #include <string>
+#include <unordered_map>
 
 struct ClientInfo {
+  int socket;
   std::string ip;
   int port;
 };
@@ -16,19 +16,20 @@ public:
   static ClientHandler &getInstance();
 
   void ListClients();
-  void KickClient(int socket);
-  void CreateClient(ClientInfo client, int clientSocket);
-  bool IsIpConnected(std::string &ip);
+  void KickClient(std::string clientIP);
+  void CreateClient(ClientInfo client, std::string clientIP);
+  bool IsIpConnected(std::string clientIP);
   void HandleClient(int clientSocket, sockaddr_in clientAddr);
   void HandleMessage(const char *clientIP, int clientPort, const char *message);
-  void HandleDisconnect(int clientSocket, const char *clientIP, int clientPort);
+  void HandleDisconnect(std::string clientIP);
 
-  std::map<int, ClientInfo> getClientsMap() const { return clients; }
+  std::unordered_map<std::string, ClientInfo> getClientsMap() const {
+    return clients;
+  }
 
 private:
   ClientHandler() {}
-  std::map<int, ClientInfo> clients;
-  std::set<std::string> connectedIPs;
+  std::unordered_map<std::string, ClientInfo> clients;
 };
 
 #endif

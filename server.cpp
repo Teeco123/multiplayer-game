@@ -16,47 +16,8 @@
 
 #define PORT 8080
 
-// Client tracking structure
-
 std::mutex consoleMutex;
 std::mutex clientsMutex;
-
-void HandleClient(int clientSocket, sockaddr_in clientAddr) {
-  char buffer[1024];
-
-  bool running = true;
-  while (running) {
-    // Message buffer
-    memset(buffer, 0, 1024);
-
-    // Client IP and PORT stringified
-    char clientIP[INET_ADDRSTRLEN];
-    int clientPort = ntohs(clientAddr.sin_port);
-    inet_ntop(AF_INET, &(clientAddr.sin_addr), clientIP, INET_ADDRSTRLEN);
-
-    // Check if server is receiving bytes from client else close connection
-    int bytesReceived = recv(clientSocket, buffer, 1024, 0);
-    if (bytesReceived <= 0) {
-      std::lock_guard lock(consoleMutex);
-      printf("Client disconnected - %s:%d\n", clientIP, clientPort);
-      running = false;
-      break;
-    }
-
-    // Print client message
-    {
-      std::lock_guard lock(consoleMutex);
-      printf("%s:%d - %s", clientIP, clientPort, buffer);
-    }
-  }
-
-  // Cleanup
-  {
-    std::lock_guard lock(clientsMutex);
-  }
-
-  close(clientSocket);
-}
 
 int main() {
   SocketHandler socket;
@@ -111,7 +72,9 @@ int main() {
     ClientHandler::getInstance().CreateClient(client, clientSocket);
 
     // Create new thread for a client and detach it
-    threads.push_back(std::thread(HandleClient, clientSocket, clientAddr));
+    threads.push_back(std::thread(&ClientHandler::HandleClient,
+                                  &ClientHandler::getInstance(), clientSocket,
+                                  clientAddr));
     threads.back().detach();
   }
 

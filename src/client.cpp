@@ -1,5 +1,7 @@
 #include "../include/client.hpp"
+#include <arpa/inet.h>
 #include <mutex>
+#include <netinet/in.h>
 #include <unistd.h>
 
 ClientHandler &ClientHandler::getInstance() {
@@ -8,7 +10,7 @@ ClientHandler &ClientHandler::getInstance() {
 }
 
 void ClientHandler::ListClients() {
-  std::lock_guard lock(clientMutex);
+  std::lock_guard lock(consoleMutex);
 
   printf("Total: %lu clients\n", clients.size());
   printf("\n");
@@ -48,4 +50,56 @@ void ClientHandler::CreateClient(ClientInfo client, int clientSocket) {
 bool ClientHandler::IsIpConnected(std::string &ip) {
   std::lock_guard lock(clientMutex);
   return connectedIPs.find(ip) != connectedIPs.end();
+}
+
+void ClientHandler::HandleMessage(const char *clientIP, int clientPort,
+                                  const char *message) {
+  std::lock_guard lock(consoleMutex);
+  printf("%s:%d - %s", clientIP, clientPort, message);
+}
+
+void ClientHandler::HandleDisconnect(int clientSocket, const char *clientIP,
+                                     int clientPort) {
+  // Print disconnect message
+  {
+    std::lock_guard lock(consoleMutex);
+    printf("Client disconnected - %s:%d\n", clientIP, clientPort);
+  }
+
+  // Remove client from clients map
+  {
+    std::lock_guard lock(clientMutex);
+    clients.erase(clientSocket);
+
+    std::string ipString(clientIP);
+    connectedIPs.erase(ipString);
+  }
+
+  close(clientSocket);
+}
+
+void ClientHandler::HandleClient(int clientSocket, sockaddr_in clientAddr) {
+  char buffer[1024];
+  bool running = true;
+
+  // Client IP and PORT stringified
+  char clientIP[INET_ADDRSTRLEN];
+  inet_ntop(AF_INET, &(clientAddr.sin_addr), clientIP, INET_ADDRSTRLEN);
+  int clientPort = ntohs(clientAddr.sin_port);
+
+  while (running) {
+    // Clear message buffer
+    memset(buffer, 0, 1024);
+
+    // Check if server is receiving bytes from client
+    int bytesReceived = recv(clientSocket, buffer, 1024, 0);
+    if (bytesReceived <= 0) {
+      running = false;
+      HandleDisconnect(clientSocket, clientIP, clientPort);
+      break;
+    }
+
+    // Process received message
+    HandleMessage(clientIP, clientPort, buffer);
+  }
 }

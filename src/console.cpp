@@ -1,7 +1,6 @@
 #include "../include/console.hpp"
+#include "../include/client.hpp"
 #include <iostream>
-#include <map>
-#include <mutex>
 #include <thread>
 
 void ConsoleHandler::CreateThread() {
@@ -31,8 +30,14 @@ void ConsoleHandler::ExecuteCommand(std::string &commandLine) {
   if (command == "help") {
     HelpCommand();
   } else if (command == "kick") {
+    int socket;
+    if (iss >> socket) {
+      ClientHandler::getInstance().KickClient(socket);
+    } else {
+      printf("Usage: kick <socket_id>\n");
+    }
   } else if (command == "clients") {
-    ClientsCommand(clients);
+    ClientHandler::getInstance().ListClients();
   } else {
     printf("Unknown command. Type 'help' for help.\n");
   }
@@ -43,20 +48,4 @@ void ConsoleHandler::HelpCommand() {
   printf("  clients\n");
   printf("  kick\n");
   printf("  help\n");
-}
-
-void ConsoleHandler::ClientsCommand(const std::map<int, ClientInfo> &clients) {
-  std::lock_guard lock(consoleMutex);
-
-  printf("Total: %lu clients\n", clients.size());
-  printf("\n");
-
-  if (clients.empty()) {
-    printf("No clients connected.\n");
-  } else {
-    for (const auto &pair : clients) {
-      printf("Client %d: %s:%d\n", pair.first, pair.second.ip.c_str(),
-             pair.second.port);
-    }
-  }
 }

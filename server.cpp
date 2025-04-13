@@ -1,9 +1,5 @@
 #include <cstring>
-#include <iostream>
-#include <map>
 #include <mutex>
-#include <set>
-#include <sstream>
 #include <thread>
 #include <vector>
 
@@ -14,6 +10,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include "include/client.hpp"
 #include "include/console.hpp"
 #include "include/socket.hpp"
 
@@ -23,25 +20,6 @@
 
 std::mutex consoleMutex;
 std::mutex clientsMutex;
-
-std::set<std::string> connectedIPs;
-
-bool isIPConnected(const std::string &ip) {
-  std::lock_guard lock(clientsMutex);
-  return connectedIPs.find(ip) != connectedIPs.end();
-}
-
-void kickClient(int socket) {
-  std::lock_guard lock(clientsMutex);
-  auto client = clients.find(socket);
-  if (client != clients.end()) {
-    printf("Kicking client %d (%s:%d).\n", socket, client->second.ip.c_str(),
-           client->second.port);
-    close(socket);
-  } else {
-    printf("No client with socket ID %d found.\n", socket);
-  }
-}
 
 void HandleClient(int clientSocket, sockaddr_in clientAddr) {
   char buffer[1024];
@@ -75,7 +53,6 @@ void HandleClient(int clientSocket, sockaddr_in clientAddr) {
   // Cleanup
   {
     std::lock_guard lock(clientsMutex);
-    clients.erase(clientSocket);
   }
 
   close(clientSocket);
@@ -109,9 +86,9 @@ int main() {
     char clientIP[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &(clientAddr.sin_addr), clientIP, INET_ADDRSTRLEN);
     int clientPort = ntohs(clientAddr.sin_port);
-    std::string ipString(clientIP);
+    std::string ipStr(clientIP);
 
-    if (isIPConnected(ipString)) {
+    if (ClientHandler::getInstance().IsIpConnected(ipStr)) {
       std::lock_guard lock(consoleMutex);
       printf("Connection rejected - %s:%d (IP already connected)\n", clientIP,
              clientPort);
@@ -128,14 +105,10 @@ int main() {
     }
 
     // Store client info
-    {
-      std::lock_guard lock(clientsMutex);
-      ClientInfo client;
-      client.ip = clientIP;
-      client.port = clientPort;
-      clients[clientSocket] = client;
-      connectedIPs.insert(ipString);
-    }
+    ClientInfo client;
+    client.ip = clientIP;
+    client.port = clientPort;
+    ClientHandler::getInstance().CreateClient(client, clientSocket);
 
     // Create new thread for a client and detach it
     threads.push_back(std::thread(HandleClient, clientSocket, clientAddr));

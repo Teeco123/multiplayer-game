@@ -27,33 +27,28 @@ void ClientHandler::ListClients() {
   }
 }
 
-void ClientHandler::KickClient(std::string ip) {
+void ClientHandler::KickClient(int socket) {
   std::lock_guard lock(MutexHandler::getInstance().consoleMutex);
 
-  auto client = clients.find(ip);
+  auto client = clients.find(socket);
   if (client != clients.end()) {
     printf("Kicking client %d (%s:%d).\n", client->second.socket,
            client->second.ip.c_str(), client->second.port);
     close(client->second.socket);
   } else {
-    printf("No client with IP %s found.\n", ip.c_str());
+    printf("No client with socket %d found.\n", socket);
   }
 }
 
-void ClientHandler::CreateClient(ClientInfo client, std::string clientIP) {
+void ClientHandler::CreateClient(ClientInfo client, int socket) {
   std::lock_guard lock(MutexHandler::getInstance().clientMutex);
 
-  clients[clientIP] = client;
+  clients[socket] = client;
 }
 
-bool ClientHandler::IsIpConnected(std::string ip) {
-  std::lock_guard lock(MutexHandler::getInstance().clientMutex);
-  return clients.find(ip) != clients.end();
-}
-
-void ClientHandler::HandleMessage(std::string ip, char *message) {
+void ClientHandler::HandleMessage(int socket, char *message) {
   std::lock_guard lock(MutexHandler::getInstance().consoleMutex);
-  auto client = clients.find(ip);
+  auto client = clients.find(socket);
   if (client != clients.end()) {
     printf("%s:%d - %s", client->second.ip.c_str(), client->second.port,
            message);
@@ -62,26 +57,26 @@ void ClientHandler::HandleMessage(std::string ip, char *message) {
   }
 }
 
-void ClientHandler::HandleDisconnect(std::string ip) {
+void ClientHandler::HandleDisconnect(int socket) {
 
-  auto client = clients.find(ip);
+  auto client = clients.find(socket);
   if (client != clients.end()) {
     // Remove client from clients map
     {
       std::lock_guard lock(MutexHandler::getInstance().clientMutex);
-      clients.erase(ip);
+      clients.erase(socket);
     }
     // Print disconnect message
     {
       std::lock_guard lock(MutexHandler::getInstance().consoleMutex);
-      printf("Client disconnected - %s\n", ip.c_str());
+      printf("Client disconnected - %d\n", socket);
     }
 
     close(client->second.socket);
   } else {
     {
       std::lock_guard lock(MutexHandler::getInstance().consoleMutex);
-      printf("Error occured while disconnecting user with IP %s", ip.c_str());
+      printf("Error occured while disconnecting user with socket %d", socket);
     }
   }
 }
@@ -89,15 +84,16 @@ void ClientHandler::HandleDisconnect(std::string ip) {
 void ClientHandler::BroadcastPosition(PositionPacket &positionData) {
   std::lock_guard lock(MutexHandler::getInstance().clientMutex);
 
-  send(4, &positionData, sizeof(PositionPacket), 0);
-  send(5, &positionData, sizeof(PositionPacket), 0);
+  for (const auto &client : clients) {
+    send(client.second.socket, &positionData, sizeof(PositionPacket), 0);
+  }
 }
 
-void ClientHandler::HandleClient(std::string ip, sockaddr_in clientAddr) {
+void ClientHandler::HandleClient(int socket, sockaddr_in clientAddr) {
   char buffer[1024];
   PositionPacket positionData;
 
-  auto client = clients.find(ip);
+  auto client = clients.find(socket);
   while (client != clients.end()) {
     // Clear message buffer
     memset(buffer, 0, 1024);
@@ -108,7 +104,7 @@ void ClientHandler::HandleClient(std::string ip, sockaddr_in clientAddr) {
     // Check if server is receiving bytes from client
     int bytesReceived = recv(client->second.socket, buffer, 1024, 0);
     if (bytesReceived <= 0) {
-      HandleDisconnect(ip);
+      HandleDisconnect(socket);
       break;
     }
 

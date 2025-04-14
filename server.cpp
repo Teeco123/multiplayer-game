@@ -41,27 +41,12 @@ int main() {
     inet_ntop(AF_INET, &(clientAddr.sin_addr), clientIP, INET_ADDRSTRLEN);
     int clientPort = ntohs(clientAddr.sin_port);
 
-    // Check if client with given ip is already connected if yes refuse to
-    // connect. Easy?
-    /*if (ClientHandler::getInstance().IsIpConnected(clientIP)) {*/
-    /*  std::lock_guard lock(MutexHandler::getInstance().consoleMutex);*/
-    /*  printf("Connection rejected - %s:%d (IP already connected)\n",
-     * clientIP,*/
-    /*         clientPort);*/
-    /*  const char *message = "Connection rejected: You are already connected
-     * "*/
-    /*                        "from this IP address.\n";*/
-    /*  send(clientSocket, message, strlen(message), 0);*/
-    /*  close(clientSocket);*/
-    /*  continue;*/
-    /*}*/
-
     // Store client info
     ClientInfo client;
     client.ip = clientIP;
     client.port = clientPort;
     client.socket = clientSocket;
-    ClientHandler::getInstance().CreateClient(client, clientIP);
+    ClientHandler::getInstance().CreateClient(client, clientSocket);
 
     {
       std::lock_guard lock(MutexHandler::getInstance().consoleMutex);
@@ -70,7 +55,7 @@ int main() {
 
     // Create new thread for a client and detach it
     threads.push_back(std::thread(&ClientHandler::HandleClient,
-                                  &ClientHandler::getInstance(), clientIP,
+                                  &ClientHandler::getInstance(), clientSocket,
                                   clientAddr));
     threads.back().detach();
   }

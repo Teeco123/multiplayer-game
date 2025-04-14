@@ -22,21 +22,19 @@ public:
   static ClientHandler &getInstance();
 
   void ListClients();
-  void KickClient(std::string clientIP);
-  void CreateClient(ClientInfo client, std::string clientIP);
-  bool IsIpConnected(std::string clientIP);
+  void KickClient(int socket);
+  void CreateClient(ClientInfo client, int socket);
+  bool IsIpConnected(int socket);
   void BroadcastPosition(PositionPacket &positionData);
-  void HandleClient(std::string clientIP, sockaddr_in clientAddr);
-  void HandleMessage(std::string clientIP, char *message);
-  void HandleDisconnect(std::string clientIP);
+  void HandleClient(int socket, sockaddr_in clientAddr);
+  void HandleMessage(int socket, char *message);
+  void HandleDisconnect(int socket);
 
-  std::unordered_map<std::string, ClientInfo> getClientsMap() const {
-    return clients;
-  }
+  std::unordered_map<int, ClientInfo> getClientsMap() const { return clients; }
 
 private:
   ClientHandler() {}
-  std::unordered_map<std::string, ClientInfo> clients;
+  std::unordered_map<int, ClientInfo> clients;
 };
 
 #endif

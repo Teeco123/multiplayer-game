@@ -86,13 +86,24 @@ void ClientHandler::HandleDisconnect(std::string ip) {
   }
 }
 
+void ClientHandler::BroadcastPosition(PositionPacket &positionData) {
+  std::lock_guard lock(MutexHandler::getInstance().clientMutex);
+
+  send(4, &positionData, sizeof(PositionPacket), 0);
+  send(5, &positionData, sizeof(PositionPacket), 0);
+}
+
 void ClientHandler::HandleClient(std::string ip, sockaddr_in clientAddr) {
   char buffer[1024];
+  PositionPacket positionData;
 
   auto client = clients.find(ip);
   while (client != clients.end()) {
     // Clear message buffer
     memset(buffer, 0, 1024);
+
+    int bytes_read =
+        recv(client->second.socket, &positionData, sizeof(PositionPacket), 0);
 
     // Check if server is receiving bytes from client
     int bytesReceived = recv(client->second.socket, buffer, 1024, 0);
@@ -102,6 +113,7 @@ void ClientHandler::HandleClient(std::string ip, sockaddr_in clientAddr) {
     }
 
     // Process received message
-    HandleMessage(ip, buffer);
+    // HandleMessage(ip, buffer);
+    BroadcastPosition(positionData);
   }
 }

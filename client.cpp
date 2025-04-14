@@ -1,11 +1,36 @@
+#include "include/client.hpp"
 #include "raylib.h"
 #include <arpa/inet.h>
 #include <cerrno>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <ctime>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <thread>
+#include <unistd.h>
+
+void receive_updates(int sock, int id) {
+  PositionPacket positionData;
+
+  while (true) {
+    int bytesRead = recv(sock, &positionData, sizeof(PositionPacket), 0);
+
+    if (bytesRead <= 0) {
+      printf("Server disconnected\n");
+      break;
+    }
+
+    if (bytesRead == sizeof(PositionPacket)) {
+      // Skip updates about our own position (optional)
+      if (positionData.id != id) {
+        printf("Player %d moved to (%f, %f)\n", positionData.id, positionData.x,
+               positionData.y);
+      }
+    }
+  }
+}
 
 int main(void) {
   const int screenWidth = 800;
@@ -14,7 +39,10 @@ int main(void) {
   InitWindow(screenWidth, screenHeight,
              "raylib [core] example - keyboard input");
 
-  Vector2 ballPosition = {(float)screenWidth / 2, (float)screenHeight / 2};
+  srand((unsigned)time(NULL));
+  int randNumb = rand();
+  PositionPacket ballPosition = {(float)screenWidth / 2,
+                                 (float)screenHeight / 2, randNumb};
 
   SetTargetFPS(60);
 
@@ -48,15 +76,17 @@ int main(void) {
     printf("Connected\n");
   }
 
+  std::thread receive_thread(receive_updates, serverSocket, randNumb);
+
   while (!WindowShouldClose()) {
     if (IsKeyDown(KEY_RIGHT))
-      ballPosition.x += 2.0f;
+      ballPosition.x += 4.0f;
     if (IsKeyDown(KEY_LEFT))
-      ballPosition.x -= 2.0f;
+      ballPosition.x -= 4.0f;
     if (IsKeyDown(KEY_UP))
-      ballPosition.y -= 2.0f;
+      ballPosition.y -= 4.0f;
     if (IsKeyDown(KEY_DOWN))
-      ballPosition.y += 2.0f;
+      ballPosition.y += 4.0f;
 
     BeginDrawing();
 
@@ -64,11 +94,16 @@ int main(void) {
 
     DrawText("move the ball with arrow keys", 10, 10, 20, DARKGRAY);
 
-    DrawCircleV(ballPosition, 50, MAROON);
+    DrawCircleV({ballPosition.x, ballPosition.y}, 50, MAROON);
 
     EndDrawing();
+
+    send(serverSocket, &ballPosition, sizeof(PositionPacket), 0);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(16));
   }
 
+  close(serverSocket);
   CloseWindow(); // Close window and OpenGL context
 
   return 0;

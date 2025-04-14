@@ -43,16 +43,18 @@ int main() {
 
     // Check if client with given ip is already connected if yes refuse to
     // connect. Easy?
-    if (ClientHandler::getInstance().IsIpConnected(clientIP)) {
-      std::lock_guard lock(MutexHandler::getInstance().consoleMutex);
-      printf("Connection rejected - %s:%d (IP already connected)\n", clientIP,
-             clientPort);
-      const char *message = "Connection rejected: You are already connected "
-                            "from this IP address.\n";
-      send(clientSocket, message, strlen(message), 0);
-      close(clientSocket);
-      continue;
-    }
+    /*if (ClientHandler::getInstance().IsIpConnected(clientIP)) {*/
+    /*  std::lock_guard lock(MutexHandler::getInstance().consoleMutex);*/
+    /*  printf("Connection rejected - %s:%d (IP already connected)\n",
+     * clientIP,*/
+    /*         clientPort);*/
+    /*  const char *message = "Connection rejected: You are already connected
+     * "*/
+    /*                        "from this IP address.\n";*/
+    /*  send(clientSocket, message, strlen(message), 0);*/
+    /*  close(clientSocket);*/
+    /*  continue;*/
+    /*}*/
 
     // Store client info
     ClientInfo client;

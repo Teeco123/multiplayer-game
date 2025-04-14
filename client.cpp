@@ -6,10 +6,15 @@
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
+#include <mutex>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <thread>
 #include <unistd.h>
+#include <unordered_map>
+
+std::unordered_map<int, PositionPacket> otherPlayers;
+std::mutex playersMutex;
 
 void receive_updates(int sock, int id) {
   PositionPacket positionData;
@@ -27,6 +32,7 @@ void receive_updates(int sock, int id) {
       if (positionData.id != id) {
         printf("Player %d moved to (%f, %f)\n", positionData.id, positionData.x,
                positionData.y);
+        otherPlayers[positionData.id] = positionData;
       }
     }
   }
@@ -95,6 +101,20 @@ int main(void) {
     DrawText("move the ball with arrow keys", 10, 10, 20, DARKGRAY);
 
     DrawCircleV({ballPosition.x, ballPosition.y}, 50, MAROON);
+
+    {
+      for (const auto &player : otherPlayers) {
+        int playerId = player.first;
+        const PositionPacket &pos = player.second;
+
+        // Draw the player
+        DrawCircleV({pos.x, pos.y}, 50, GREEN);
+
+        char idText[10];
+        sprintf(idText, "ID: %d", playerId);
+        DrawText(idText, pos.x - 20, pos.y - 70, 20, BLACK);
+      }
+    }
 
     EndDrawing();
 

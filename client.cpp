@@ -30,8 +30,6 @@ void receive_updates(int sock, int id) {
     if (bytesRead == sizeof(PositionPacket)) {
       // Skip updates about our own position (optional)
       if (positionData.id != id) {
-        printf("Player %d moved to (%f, %f)\n", positionData.id, positionData.x,
-               positionData.y);
         otherPlayers[positionData.id] = positionData;
       }
     }
